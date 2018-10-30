@@ -30,6 +30,7 @@
     <ExtensionsDependency Include="Microsoft.Extensions.ClosedGenericMatcher.Sources" Version="$(MicrosoftExtensionsClosedGenericMatcherSourcesPackageVersion)" />
     <ExtensionsDependency Include="Microsoft.Extensions.CommandLineUtils.Sources" Version="$(MicrosoftExtensionsCommandLineUtilsSourcesPackageVersion)" />
     <ExtensionsDependency Include="Microsoft.Extensions.CopyOnWriteDictionary.Sources" Version="$(MicrosoftExtensionsCopyOnWriteDictionarySourcesPackageVersion)" />
+    <ExtensionsDependency Include="Microsoft.Extensions.DiagnosticAdapter" Version="$(MicrosoftExtensionsDiagnosticAdapterPackageVersion)" AllMetapackage="true" AppMetapackage="true" />
     <ExtensionsDependency Include="Microsoft.Extensions.HashCodeCombiner.Sources" Version="$(MicrosoftExtensionsHashCodeCombinerSourcesPackageVersion)" />
     <ExtensionsDependency Include="Microsoft.Extensions.ObjectMethodExecutor.Sources" Version="$(MicrosoftExtensionsObjectMethodExecutorSourcesPackageVersion)" />
     <ExtensionsDependency Include="Microsoft.Extensions.ObjectPool" Version="$(MicrosoftExtensionsObjectPoolPackageVersion)" AllMetapackage="true" AppMetapackage="true" />

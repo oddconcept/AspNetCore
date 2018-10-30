@@ -16,7 +16,6 @@
     <Node Id="Diagnostics" Label="Diagnostics" />
     <Node Id="DotNetTools" Label="DotNetTools" />
     <Node Id="EntityFrameworkCore" Label="EntityFrameworkCore" />
-    <Node Id="EventNotification" Label="EventNotification" />
     <Node Id="FileSystem" Label="FileSystem" />
     <Node Id="Hosting" Label="Hosting" />
     <Node Id="HtmlAbstractions" Label="HtmlAbstractions" />
@@ -82,7 +81,6 @@
     <Link Source="AuthSamples" Target="Testing" />
     <Link Source="AzureIntegration" Target="Common" />
     <Link Source="AzureIntegration" Target="Configuration" />
-    <Link Source="AzureIntegration" Target="EventNotification" />
     <Link Source="AzureIntegration" Target="Hosting" />
     <Link Source="AzureIntegration" Target="IISIntegration" />
     <Link Source="AzureIntegration" Target="KestrelHttpServer" />
@@ -129,7 +127,6 @@
     <Link Source="Diagnostics" Target="Common" />
     <Link Source="Diagnostics" Target="DependencyInjection" />
     <Link Source="Diagnostics" Target="EntityFrameworkCore" />
-    <Link Source="Diagnostics" Target="EventNotification" />
     <Link Source="Diagnostics" Target="FileSystem" />
     <Link Source="Diagnostics" Target="Hosting" />
     <Link Source="Diagnostics" Target="HttpAbstractions" />
@@ -148,13 +145,11 @@
     <Link Source="EntityFrameworkCore" Target="Hosting" />
     <Link Source="EntityFrameworkCore" Target="Logging" />
     <Link Source="EntityFrameworkCore" Target="Microsoft.Data.Sqlite" />
-    <Link Source="EventNotification" Target="Testing" />
     <Link Source="FileSystem" Target="Common" />
     <Link Source="FileSystem" Target="Testing" />
     <Link Source="Hosting" Target="Common" />
     <Link Source="Hosting" Target="Configuration" />
     <Link Source="Hosting" Target="DependencyInjection" />
-    <Link Source="Hosting" Target="EventNotification" />
     <Link Source="Hosting" Target="FileSystem" />
     <Link Source="Hosting" Target="HttpAbstractions" />
     <Link Source="Hosting" Target="Logging" />
@@ -272,7 +267,6 @@
     <Link Source="Mvc" Target="CORS" />
     <Link Source="Mvc" Target="DependencyInjection" />
     <Link Source="Mvc" Target="Diagnostics" />
-    <Link Source="Mvc" Target="EventNotification" />
     <Link Source="Mvc" Target="FileSystem" />
     <Link Source="Mvc" Target="Hosting" />
     <Link Source="Mvc" Target="HtmlAbstractions" />
@@ -289,7 +283,6 @@
     <Link Source="Mvc" Target="Security" />
     <Link Source="Mvc" Target="Session" />
     <Link Source="Mvc" Target="StaticFiles" />
-    <Link Source="Mvc" Target="Testing" />
     <Link Source="MvcPrecompilation" Target="Common" />
     <Link Source="MvcPrecompilation" Target="Configuration" />
     <Link Source="MvcPrecompilation" Target="Hosting" />
@@ -298,7 +291,6 @@
     <Link Source="MvcPrecompilation" Target="Mvc" />
     <Link Source="MvcPrecompilation" Target="Razor" />
     <Link Source="MvcPrecompilation" Target="Security" />
-    <Link Source="MvcPrecompilation" Target="Testing" />
     <Link Source="Options" Target="Common" />
     <Link Source="Options" Target="Configuration" />
     <Link Source="Options" Target="DependencyInjection" />
@@ -306,11 +298,9 @@
     <Link Source="Proxy" Target="IISIntegration" />
     <Link Source="Proxy" Target="KestrelHttpServer" />
     <Link Source="Proxy" Target="Options" />
-    <Link Source="Proxy" Target="Testing" />
     <Link Source="Proxy" Target="WebSockets" />
     <Link Source="Razor" Target="Common" />
     <Link Source="Razor" Target="HtmlAbstractions" />
-    <Link Source="Razor" Target="Testing" />
     <Link Source="ResponseCaching" Target="Caching" />
     <Link Source="ResponseCaching" Target="Common" />
     <Link Source="ResponseCaching" Target="Hosting" />

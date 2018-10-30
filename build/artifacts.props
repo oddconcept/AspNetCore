@@ -204,7 +204,6 @@
     <PackageArtifact Include="Microsoft.Extensions.DependencyInjection.Abstractions" AllMetapackage="true" AppMetapackage="true" Category="ship" />
     <PackageArtifact Include="Microsoft.Extensions.DependencyInjection.Specification.Tests" Category="ship" />
     <PackageArtifact Include="Microsoft.Extensions.DependencyInjection" AllMetapackage="true" AppMetapackage="true" Category="ship" />
-    <PackageArtifact Include="Microsoft.Extensions.DiagnosticAdapter" AllMetapackage="true" AppMetapackage="true" Category="ship" />
     <PackageArtifact Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Category="noship" />
     <PackageArtifact Include="Microsoft.Extensions.Diagnostics.HealthChecks" Category="noship" />
     <PackageArtifact Include="Microsoft.Extensions.FileProviders.Abstractions" AllMetapackage="true" AppMetapackage="true" Category="ship" />

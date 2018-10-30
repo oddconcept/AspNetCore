@@ -61,7 +61,6 @@
     <ShippedRepository Include="Diagnostics" />
     <ShippedRepository Include="DotNetTools" />
     <ShippedRepository Include="EntityFrameworkCore" />
-    <ShippedRepository Include="EventNotification" />
     <ShippedRepository Include="FileSystem" />
     <ShippedRepository Include="Hosting" />
     <ShippedRepository Include="HtmlAbstractions" />
