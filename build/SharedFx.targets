@@ -13,8 +13,8 @@
     <ProjectToBuild Include="$(RepositoryRoot)src\Framework\**\*.shfxproj" />
     <ProjectToBuild Include="$(UnitTestFxProject)" />
     <ProjectToBuild Include="$(RepositoryRoot)src\Installers\Archive\*.*proj" />
-    <ProjectToBuild Condition=" '$(SharedFxRid)' == 'linux-x64' AND '$(BuildDebianInstallers)' != 'false' " Include="$(RepositoryRoot)src\Installers\Debian\*.*proj" />
-    <ProjectToBuild Condition=" '$(SharedFxRid)' == 'linux-x64' AND '$(BuildRpmInstallers)' != 'false' " Include="$(RepositoryRoot)src\Installers\Rpm\*.*proj" />
+    <ProjectToBuild Condition=" '$(SharedFxRid)' == 'linux-x64' AND '$(LinuxInstallerType)' == 'deb' " Include="$(RepositoryRoot)src\Installers\Debian\*.*proj" />
+    <ProjectToBuild Condition=" '$(SharedFxRid)' == 'linux-x64' AND '$(LinuxInstallerType)' == 'rpm' " Include="$(RepositoryRoot)src\Installers\Rpm\*.*proj" />
   </ItemGroup>
 
   <Target Name="BuildSharedFx" DependsOnTargets="$(BuildSharedFxDependsOn)" />

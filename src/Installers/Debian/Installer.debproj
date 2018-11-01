@@ -3,144 +3,108 @@
 -->
 <Project DefaultTargets="Build">
 
+  <UsingTask Condition=" '$(BuildToolsTaskAssembly)' != '' AND Exists('$(BuildToolsTaskAssembly)') " TaskName="Microsoft.AspNetCore.BuildTools.GenerateFileFromTemplate" AssemblyFile="$(BuildToolsTaskAssembly)" />
+
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" />
 
+  <!-- Output paths -->
   <PropertyGroup>
-    <BaseIntermediateOutputPath>$(RepositoryRoot)obj\$(MSBuildProjectName)$(MSbuildProjectExtension)\</BaseIntermediateOutputPath>
+    <BaseIntermediateOutputPath>$(RepositoryRoot)obj\Debian\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
     <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(SharedFxRid)\</IntermediateOutputPath>
-    <_WorkLayoutDir>$(IntermediateOutputPath)layout\</_WorkLayoutDir>
-    <_WorkOutputDir>$(IntermediateOutputPath)output\</_WorkOutputDir>
-    <OutputFileName>$(RuntimeInstallerBaseName)-$(PackageVersion)-$(SharedFxRid).deb</OutputFileName>
+    <!-- Must be named "package_root/". This is expected by the build.sh script in this project. -->
+    <IntermediatePackageRoot>$(IntermediateOutputPath)package_root\</IntermediatePackageRoot>
+    <OutputFileName>$(RuntimeInstallerBaseName)-$(SharedFxVersion)-$(SharedFxRid).deb</OutputFileName>
     <OutputPath>$(InstallersOutputPath)</OutputPath>
     <TargetPath>$(InstallersOutputPath)$(OutputFileName)</TargetPath>
+  </PropertyGroup>
 
-    <SharedFxIntermediateArchiveFilePrefix>$(RepositoryRoot).deps\Signed\SharedFx\aspnetcore-runtime-internal-$(PackageVersion)</SharedFxIntermediateArchiveFilePrefix>
+  <!-- Installer settings -->
+  <PropertyGroup>
+    <DebianPackageInstallRoot>/usr/share/dotnet</DebianPackageInstallRoot>
+  </PropertyGroup>
 
-    <!-- installer versions -->
-    <!-- CLI would take a dependency such as 'aspnetcore-runtime-M.N >= M.N.P'. Here M.N is the InstallerIdVersion and M.N.P is the InstallerPackageVersion -->
-    <InstallerIdVersion>$(AspNetCoreMajorVersion).$(AspNetCoreMinorVersion)</InstallerIdVersion>
-    <InstallerPackageVersion>$(InstallerIdVersion).$(AspNetCorePatchVersion)</InstallerPackageVersion>
+  <!-- Installer versions -->
+  <PropertyGroup>
+    <!-- CLI would take a dependency such as 'aspnetcore-runtime-M.N >= M.N.P'. Here M.N is part of the id and M.N.P is the PackageVersion -->
+    <PackageId>$(RuntimeInstallerBaseName)-$(AspNetCoreMajorVersion).$(AspNetCoreMinorVersion)</PackageId>
+
+    <!-- PackageVersion does not match the ASP.NET Core runtime verison. -->
+    <PackageVersion>$(AspNetCoreMajorVersion).$(AspNetCoreMinorVersion).$(AspNetCorePatchVersion)</PackageVersion>
     <!-- Deb installers are versioned as M.N.P~Build following the core-setup convention -->
-    <DebInstallerPackageVersion>$(InstallerPackageVersion)</DebInstallerPackageVersion>
-    <DebInstallerPackageVersion Condition="'$(PackageVersionSuffix)' != ''">$(DebInstallerPackageVersion)~$(PackageVersionSuffix)</DebInstallerPackageVersion>
+    <PackageVersion Condition="'$(IncludePreReleaseLabelInPackageVersion)' == 'true'">$(PackageVersion)~$(BuildNumber)</PackageVersion>
     <PackageRevision>1</PackageRevision>
 
-    <InstallRoot>/usr/share/dotnet</InstallRoot>
-
-    <_DockerRootDir>/opt/code/</_DockerRootDir>
+    <!-- Needed some creativity to convert the PackageVersion M.N.P-Build to the installer version M.N.P~Build, The conditional handles stabilized builds -->
+    <DotnetRuntimeDependencyVersion>$(MicrosoftNETCoreAppPackageVersion)</DotnetRuntimeDependencyVersion>
+    <DotnetRuntimeDependencyVersion Condition="$(DotnetRuntimeDependencyVersion.Contains('-'))">$(DotnetRuntimeDependencyVersion.Substring(0, $(DotnetRuntimeDependencyVersion.IndexOf('-'))))~$(DotnetRuntimeDependencyVersion.Substring($([MSBuild]::Add($(DotnetRuntimeDependencyVersion.IndexOf('-')), 1))))</DotnetRuntimeDependencyVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Framework\**\Microsoft.AspNetCore.All.shfxproj">
+      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
+      <OutputItemType>_ResolvedFxProjects</OutputItemType>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Framework\**\Microsoft.AspNetCore.App.shfxproj">
+      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
+      <OutputItemType>_ResolvedFxProjects</OutputItemType>
+    </ProjectReference>
+  </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
 
   <Target Name="GetTargetPath" Returns="$(TargetPath)" />
 
-  <Target Name="_EnsureInstallerPrerequisites">
-    <MakeDir Directories="$(InstallersOutputPath)" />
+  <Target Name="PrepareForBuild">
+    <Error Text="Currently only linux-x64 is supported by Debian installers." Condition=" '$(SharedFxRid)' != 'linux-x64' " />
 
-    <!-- Check Docker server OS -->
-    <Exec Command="docker version -f &quot;{{.Server.Os}}&quot;" StandardOutputImportance="Normal" ConsoleToMSBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="DockerHostOS" />
-    </Exec>
-
-    <Error
-      Text="Docker host must be using Linux containers."
-      Condition="'$(DockerHostOS)' != 'linux'"/>
-    <Error
-      Text="Expected archive missing at $(SharedFxIntermediateArchiveFilePrefix)-linux-x64.tar.gz."
-      Condition="!Exists('$(SharedFxIntermediateArchiveFilePrefix)-linux-x64.tar.gz')" />
+    <MakeDir Directories="$(IntermediateOutputPath);$(IntermediatePackageRoot);$(OutputPath)" />
   </Target>
 
-  <Target Name="_BuildDockerImage">
-    <Exec Command="docker build --build-arg USER_ID=%24(id -u) -t docker-image-$(Image) ." WorkingDirectory="$(MSBuildThisFileDirectory)docker/" />
-  </Target>
+  <Target Name="Build" DependsOnTargets="PrepareForBuild;ResolveProjectReferences;GetTargetPath">
 
-  <Target Name="_RemoveDockerImage">
-    <Exec Command="docker rmi docker-image-$(Image)" />
-  </Target>
+    <!-- Layout files in package_root/ for the build.sh script. -->
+    <ItemGroup>
+      <SharedFxAssetFolder Include="%(_ResolvedFxProjects.InstallerAssetPaths)" SharedFxName="%(_ResolvedFxProjects.SharedFxName)" />
+      <PackageFiles Include="%(SharedFxAssetFolder.Identity)\**\*">
+        <DestinationDir>$(IntermediatePackageRoot)shared\%(SharedFxAssetFolder.SharedFxName)\$(SharedFxVersion)\</DestinationDir>
+      </PackageFiles>
+    </ItemGroup>
 
-  <Target Name="RunDebTool">
+    <Copy SourceFiles="@(PackageFiles)" DestinationFiles="@(PackageFiles->'%(DestinationDir)%(RecursiveDir)%(FileName)%(Extension)')" />
+
+    <!-- Generate debian_config.json. We can't simply use WriteLinesToFile because of https://github.com/Microsoft/msbuild/issues/1622. Use our custom GenerateFileFromTemplate task instead -->
     <PropertyGroup>
-      <BuildDebInstallerScript>$(RepositoryRoot)src/Installers/Debian/build.sh</BuildDebInstallerScript>
+      <DebianConfigProperties>
+        AspNetCoreMajorVersion=$(AspNetCoreMajorVersion);
+        AspNetCoreMinorVersion=$(AspNetCoreMinorVersion);
+        Authors=$(Authors);
+        DebianPackageInstallRoot=$(DebianPackageInstallRoot);
+        DotnetRuntimeDependencyVersion=$(DotnetRuntimeDependencyVersion);
+        MaintainerEmail=$(MaintainerEmail);
+        PackageId=$(PackageId);
+        PackageLicenseType=$(PackageLicenseType);
+        PackageProjectUrl=$(PackageProjectUrl);
+        PackageRevision=$(PackageRevision);
+        PackageVersion=$(PackageVersion);
+        SharedFxDescription=$(SharedFxDescription);
+        SharedFxProductName=$(SharedFxProductName);
+      </DebianConfigProperties>
     </PropertyGroup>
 
-    <!-- Build deb package -->
-    <Exec Command="$(BuildDebInstallerScript) -i $(_WorkLayoutDir) -o $(_WorkOutputDir) -n $(INSTALLER_NAME) -v $(INSTALLER_VERSION)" />
-  </Target>
-
-  <Target Name="_GenerateDeb">
-    <!-- Create layout: Clear work directory -->
-    <MakeDir Directories="$(IntermediateOutputPath)" />
-
-    <!-- Create layout: Extract archive if given -->
-    <MakeDir Directories="$(_WorkLayoutDir)package_root\" />
-    <Exec Command="tar -xzf $(SharedFxArchive) -C $(_WorkLayoutDir)package_root/" Condition="'$(SharedFxArchive)'!=''" />
-
-    <!-- Create layout: Generate and Place debian_config.json -->
-    <PropertyGroup>
-      <DebConfigProps>MAINTAINER_NAME=$(Authors)</DebConfigProps>
-      <DebConfigProps>$(DebConfigProps);MAINTAINER_EMAIL=$(MaintainerEmail)</DebConfigProps>
-      <DebConfigProps>$(DebConfigProps);HOMEPAGE=$(PackageProjectUrl)</DebConfigProps>
-      <DebConfigProps>$(DebConfigProps);INSTALL_ROOT=$(InstallRoot)</DebConfigProps>
-      <DebConfigProps>$(DebConfigProps);PACKAGE_NAME=$(DebPrefix)</DebConfigProps>
-      <DebConfigProps>$(DebConfigProps);PACKAGE_REVISION=$(PackageRevision)</DebConfigProps>
-      <DebConfigProps>$(DebConfigProps);LICENSE_TYPE=$(PackageLicenseType)</DebConfigProps>
-      <DebConfigProps>$(DebConfigProps);SHORT_DESCRIPTION=$(DebSummary)</DebConfigProps>
-      <DebConfigProps>$(DebConfigProps);LONG_DESCRIPTION=$(DebDescription)</DebConfigProps>
-      <DebConfigProps>$(DebConfigProps);DEBIAN_DEPENDENCIES=$(DebDependencies)</DebConfigProps>
-    </PropertyGroup>
-
-    <GenerateFileFromTemplate TemplateFile="debian_config.json.in" OutputPath="$(_WorkLayoutDir)debian_config.json" Properties="$(DebConfigProps)" />
+    <GenerateFileFromTemplate TemplateFile="debian_config.json.in"
+      Properties="$(DebianConfigProperties)"
+      OutputPath="$(IntermediateOutputPath)debian_config.json" />
 
     <!-- Build SharedFx Bundle Deb package -->
 
-    <Exec Command="docker run --rm -v $(RepositoryRoot):$(_DockerRootDir) -e DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true -e INSTALLER_NAME=$(DebPrefix)-$(DebIdVersion) -e INSTALLER_VERSION=$(DebPackageVersion) docker-image-$(Image) ./build.sh /t:RunDebTool"
-      ContinueOnError="WarnAndContinue" />
-
-    <!-- Copy SharedFx packages to output -->
-    <ItemGroup>
-      <GeneratedDebFiles Include="$(_WorkOutputDir)/*.deb" />
-    </ItemGroup>
-
-    <Error Text="@(GeneratedDebFiles->Count()) deb installer files generated." Condition="'@(GeneratedDebFiles->Count())' != 1" />
-
-    <Copy
-      DestinationFiles="$(InstallersOutputPath)$(DebPrefix)-$(DebFileVersion)-x64.deb"
-      SourceFiles="@(GeneratedDebFiles)"
-      OverwriteReadOnlyFiles="True"
-      SkipUnchangedFiles="False"
-      UseHardlinksIfPossible="False" />
-  </Target>
-
-  <Target Name="Build" DependsOnTargets="_EnsureInstallerPrerequisites">
-    <PropertyGroup>
-      <Deb_DotnetRuntimeDependencyId>dotnet-runtime-$(AspNetCoreMajorVersion).$(AspNetCoreMinorVersion)</Deb_DotnetRuntimeDependencyId>
-      <Deb_DotnetRuntimeDependencyVersion>$(MicrosoftNETCoreAppPackageVersion)</Deb_DotnetRuntimeDependencyVersion>
-      <!-- Needed some creativity to convert the PackageVersion M.N.P-Build to the installer version M.N.P~Build, The conditional handles stabilized builds -->
-      <Deb_DotnetRuntimeDependencyVersion Condition="$(Deb_DotnetRuntimeDependencyVersion.Contains('-'))">$(Deb_DotnetRuntimeDependencyVersion.Substring(0, $(Deb_DotnetRuntimeDependencyVersion.IndexOf('-'))))~$(Deb_DotnetRuntimeDependencyVersion.Substring($([MSBuild]::Add($(Deb_DotnetRuntimeDependencyVersion.IndexOf('-')), 1))))</Deb_DotnetRuntimeDependencyVersion>
-    </PropertyGroup>
-
-    <ItemGroup>
-      <_DebSharedFxDependencies Include="$(Deb_DotnetRuntimeDependencyId)" Version="$(Deb_DotnetRuntimeDependencyVersion)"/>
-    </ItemGroup>
+    <Exec Command="./build.sh -i '$(IntermediateOutputPath)' -o '$(IntermediateOutputPath)out/'" />
 
     <PropertyGroup>
-      <Image>ubuntu.14.04</Image>
-
-      <DebSharedFxDependencies>@(_DebSharedFxDependencies->'"%(Identity)": { "package_version": "%(Version)" }', ', ')</DebSharedFxDependencies>
-
-      <DebCommonProps>Image=$(Image);DebPrefix=$(RuntimeInstallerBaseName)</DebCommonProps>
-      <DebCommonProps>$(DebCommonProps);DebSummary=$(SharedFxProductName);DebDescription=$(SharedFxDescription)</DebCommonProps>
-      <DebCommonProps>$(DebCommonProps);SharedFxArchive=$(SharedFxIntermediateArchiveFilePrefix)-linux-x64.tar.gz</DebCommonProps>
-
-      <DebProps>DebIdVersion=$(InstallerIdVersion);DebPackageVersion=$(DebInstallerPackageVersion);DebFileVersion=$(PackageVersion);DebDependencies=$(DebSharedFxDependencies)</DebProps>
+      <!-- Map our RIDs to the arch names used by debuild. -->
+      <DebArch Condition=" '$(SharedFxRid)' == 'linux-x64' ">amd64</DebArch>
+      <BuildScriptOutputFileName>$(PackageId)_$(PackageVersion)-$(PackageRevision)_$(DebArch).deb</BuildScriptOutputFileName>
     </PropertyGroup>
 
-    <!-- Build Docker Image -->
-    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="_BuildDockerImage" Properties="Image=$(Image)" />
-
-    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="_GenerateDeb" Properties="$(DebCommonProps);$(DebProps)" />
-
-    <!-- Remove Docker Image to save disk space -->
-    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="_RemoveDockerImage" Properties="Image=$(Image)" />
+    <Copy SourceFiles="$(IntermediateOutputPath)out/$(BuildScriptOutputFileName)" DestinationFiles="$(TargetPath)" />
   </Target>
 </Project>
