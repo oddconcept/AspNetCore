@@ -28,6 +28,10 @@
     <_DockerRootDir>/opt/code/</_DockerRootDir>
   </PropertyGroup>
 
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+
+  <Target Name="GetTargetPath" Returns="$(TargetPath)" />
+
   <Target Name="_EnsureInstallerPrerequisites">
     <MakeDir Directories="$(InstallersOutputPath)" />
 

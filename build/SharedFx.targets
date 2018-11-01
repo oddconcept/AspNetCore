@@ -12,8 +12,7 @@
     <ProjectToBuild Include="$(RepositoryRoot)src\Framework\**\*.pkgproj" />
     <ProjectToBuild Include="$(RepositoryRoot)src\Framework\**\*.shfxproj" />
     <ProjectToBuild Include="$(UnitTestFxProject)" />
-    <ProjectToBuild Include="$(RepositoryRoot)src\Installers\Archive.Internal\*.*proj" />
-    <ProjectToBuild Include="$(RepositoryRoot)src\Installers\Archive.Redist\*.*proj" />
+    <ProjectToBuild Include="$(RepositoryRoot)src\Installers\Archive\*.*proj" />
     <ProjectToBuild Condition=" '$(SharedFxRid)' == 'linux-x64' AND '$(BuildDebianInstallers)' != 'false' " Include="$(RepositoryRoot)src\Installers\Debian\*.*proj" />
     <ProjectToBuild Condition=" '$(SharedFxRid)' == 'linux-x64' AND '$(BuildRpmInstallers)' != 'false' " Include="$(RepositoryRoot)src\Installers\Rpm\*.*proj" />
   </ItemGroup>

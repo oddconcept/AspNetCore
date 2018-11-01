@@ -16,7 +16,6 @@
 
     <SharedFxIntermediateArchiveFilePrefix>$(RepositoryRoot).deps\Signed\SharedFx\aspnetcore-runtime-internal-$(PackageVersion)</SharedFxIntermediateArchiveFilePrefix>
 
-
     <!-- installer versions -->
     <!-- CLI would take a dependency such as 'aspnetcore-runtime-M.N >= M.N.P'. Here M.N is the InstallerIdVersion and M.N.P is the InstallerPackageVersion -->
     <InstallerIdVersion>$(AspNetCoreMajorVersion).$(AspNetCoreMinorVersion)</InstallerIdVersion>
@@ -30,6 +29,10 @@
 
     <_DockerRootDir>/opt/code/</_DockerRootDir>
   </PropertyGroup>
+
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+
+  <Target Name="GetTargetPath" Returns="$(TargetPath)" />
 
   <Target Name="_EnsureInstallerPrerequisites">
     <MakeDir Directories="$(InstallersOutputPath)" />
