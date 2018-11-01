@@ -1,0 +1,120 @@
+<!--
+  This project produces a RPM installers for Linux x64 platforms only.
+-->
+<Project DefaultTargets="Build">
+
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" />
+
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(RepositoryRoot)obj\$(MSBuildProjectName)$(MSbuildProjectExtension)\</BaseIntermediateOutputPath>
+    <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(SharedFxRid)\</IntermediateOutputPath>
+    <OutputFileName>$(RuntimeInstallerBaseName)-$(PackageVersion)-$(SharedFxRid).deb</OutputFileName>
+    <OutputPath>$(InstallersOutputPath)</OutputPath>
+    <TargetPath>$(InstallersOutputPath)$(OutputFileName)</TargetPath>
+
+    <SharedFxIntermediateArchiveFilePrefix>$(RepositoryRoot).deps\Signed\SharedFx\aspnetcore-runtime-internal-$(PackageVersion)</SharedFxIntermediateArchiveFilePrefix>
+
+    <!-- installer versions -->
+    <!-- CLI would take a dependency such as 'aspnetcore-runtime-M.N >= M.N.P'. Here M.N is the InstallerIdVersion and M.N.P is the InstallerPackageVersion -->
+    <InstallerIdVersion>$(AspNetCoreMajorVersion).$(AspNetCoreMinorVersion)</InstallerIdVersion>
+    <InstallerPackageVersion>$(InstallerIdVersion).$(AspNetCorePatchVersion)</InstallerPackageVersion>
+    <!-- While the revision number of Debian installers must stay at 1, the RPM installers will include the build number in the revision if available -->
+    <PackageRevision>1</PackageRevision>
+    <PackageRevision Condition="'$(PackageVersionSuffix)' != ''">0.1.$(PackageVersionSuffix)</PackageRevision>
+    <PackageRevision>$([System.String]::Copy('$(PackageRevision)').Replace('-', '_'))</PackageRevision>
+
+    <InstallRoot>/usr/share/dotnet</InstallRoot>
+
+    <_DockerRootDir>/opt/code/</_DockerRootDir>
+  </PropertyGroup>
+
+  <Target Name="_EnsureInstallerPrerequisites">
+    <MakeDir Directories="$(InstallersOutputPath)" />
+
+    <!-- Check Docker server OS -->
+    <Exec Command="docker version -f &quot;{{.Server.Os}}&quot;" StandardOutputImportance="Normal" ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="DockerHostOS" />
+    </Exec>
+
+    <Error
+      Text="Docker host must be using Linux containers."
+      Condition="'$(DockerHostOS)' != 'linux'"/>
+    <Error
+      Text="Expected archive missing at $(SharedFxIntermediateArchiveFilePrefix)-linux-x64.tar.gz."
+      Condition="!Exists('$(SharedFxIntermediateArchiveFilePrefix)-linux-x64.tar.gz')" />
+  </Target>
+
+  <Target Name="_BuildDockerImage">
+    <Exec Command="docker build --build-arg USER_ID=%24(id -u) -t docker-image-$(Image) ." WorkingDirectory="$(MSBuildThisFileDirectory)" />
+  </Target>
+
+  <Target Name="_RemoveDockerImage">
+    <Exec Command="docker rmi docker-image-$(Image)" />
+  </Target>
+
+  <Target Name="_GenerateRpm">
+    <!-- Clear working directory -->
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+
+    <!-- Create layout: Extract archive if given -->
+    <MakeDir Directories="$(IntermediateOutputPath)package_root\" />
+    <Exec Command="tar -xzf $(SharedFxArchive) -C $(IntermediateOutputPath)package_root\" Condition="'$(SharedFxArchive)'!=''" />
+
+    <!-- Create layout: Create changelog -->
+    <PropertyGroup>
+      <ChangeLogProps>DATE=$([System.DateTime]::UtcNow.ToString(ddd MMM dd yyyy))</ChangeLogProps>
+      <ChangeLogProps>$(ChangeLogProps);MAINTAINER_NAME=$(Authors)</ChangeLogProps>
+      <ChangeLogProps>$(ChangeLogProps);MAINTAINER_EMAIL=$(RpmMaintainerEmail)</ChangeLogProps>
+      <ChangeLogProps>$(ChangeLogProps);PACKAGE_VERSION=$(RpmPackageVersion)</ChangeLogProps>
+      <ChangeLogProps>$(ChangeLogProps);PACKAGE_REVISION=$(RpmRevision)</ChangeLogProps>
+    </PropertyGroup>
+
+    <GenerateFileFromTemplate TemplateFile="changelog.in" OutputPath="$(IntermediateOutputPath)templates/changelog" Properties="$(ChangeLogProps)" />
+
+    <!-- Run fpm -->
+    <!-- Retry added due to fpm/docker race where .w/package_root directory cannot be resolved -->
+    <Run
+      FileName="docker"
+      Command="run --rm -v $(RepositoryRoot):$(_DockerRootDir) docker-image-$(Image) fpm --verbose -s dir -t rpm -n $(RpmName)-$(RpmIdVersion) -p $(_DockerRootDir)artifacts/installers/$(RpmName)-$(RpmFileVersion)-$(RpmFileSuffix) -v $(RpmPackageVersion) --iteration $(RpmRevision) -a amd64 $(RpmArguments) --rpm-changelog $(_DockerRootDir).w/$(SharedFxRid)/templates/changelog --rpm-summary &quot;$(RpmMSummary)&quot; --description &quot;$(RpmDescription)&quot; --maintainer &quot;$(Authors) &lt;$(RpmMaintainerEmail)&gt;&quot; --vendor &quot;$(RpmVendor)&quot; --license &quot;$(RpmLicense)&quot; --url &quot;$(PackageProjectUrl)&quot; $(_DockerRootDir).w/$(SharedFxRid)/package_root/=&quot;$(RpmInstallRoot)/&quot;"
+      MaxRetries="5"/>
+  </Target>
+
+  <Target Name="Build" DependsOnTargets="_EnsureInstallerPrerequisites">
+     <PropertyGroup>
+      <Image>rhel.7</Image>
+      <RpmVendor>.NET Foundation</RpmVendor>
+      <Rpm_DotnetRuntimeDependencyId>dotnet-runtime-$(AspNetCoreMajorVersion).$(AspNetCoreMinorVersion)</Rpm_DotnetRuntimeDependencyId>
+      <Rpm_DotnetRuntimeDependencyVersion>$(MicrosoftNETCoreAppPackageVersion.Split('-')[0])</Rpm_DotnetRuntimeDependencyVersion>
+    </PropertyGroup>
+
+    <!-- Build Docker Image -->
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="_BuildDockerImage" Properties="Image=$(Image)" />
+
+    <ItemGroup>
+      <RpmSharedFxDependencies Include="$(Rpm_DotnetRuntimeDependencyId)" Version="$(Rpm_DotnetRuntimeDependencyVersion)" />
+      <RpmGenericSharedFxDirectories Include="$(InstallRoot)/shared" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <RpmSharedFxArguments>@(RpmSharedFxDependencies->' -d &quot;%(Identity) &gt;= %(Version)&quot;', ' ')</RpmSharedFxArguments>
+      <RpmGenericSharedFxArguments>$(RpmSharedFxArguments) @(RpmGenericSharedFxDirectories->' --directories &quot;%(FullPath)&quot;', ' ')</RpmGenericSharedFxArguments>
+
+      <RpmCommonProps>Image=$(Image);RpmVendor=$(RpmVendor);RpmName=$(RuntimeInstallerBaseName)</RpmCommonProps>
+      <RpmCommonProps>$(RpmCommonProps);RpmMaintainerEmail=$(MaintainerEmail)</RpmCommonProps>
+      <RpmCommonProps>$(RpmCommonProps);RpmRevision=$(PackageRevision)</RpmCommonProps>
+      <RpmCommonProps>$(RpmCommonProps);RpmLicense=$(PackageLicenseType)</RpmCommonProps>
+      <RpmCommonProps>$(RpmCommonProps);SharedFxArchive=$(SharedFxIntermediateArchiveFilePrefix)-linux-x64.tar.gz</RpmCommonProps>
+      <RpmCommonProps>$(RpmCommonProps);RpmMSummary=$(SharedFxProductName);RpmDescription=$(SharedFxDescription)</RpmCommonProps>
+      <RpmGenericProps>RpmInstallRoot=$(InstallRoot)</RpmGenericProps>
+      <RpmProps>RpmIdVersion=$(InstallerIdVersion);RpmPackageVersion=$(InstallerPackageVersion);RpmFileVersion=$(PackageVersion)</RpmProps>
+
+      <RpmSharedFxProps>$(RpmCommonProps);$(RpmGenericProps);$(RpmProps);RpmArguments=$(RpmGenericSharedFxArguments);RpmFileSuffix=x64.rpm</RpmSharedFxProps>
+    </PropertyGroup>
+
+    <!-- Generic installer-->
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="_GenerateRpm" Properties="$(RpmSharedFxProps)" />
+
+    <!-- Remove Docker Image to save disk space -->
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="_RemoveDockerImage" Properties="Image=$(Image)" />
+  </Target>
+</Project>

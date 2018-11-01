@@ -3,7 +3,6 @@
   <Import Project="PackageArchive.targets" />
   <Import Project="AzureIntegration.targets" />
   <Import Project="SharedFx.targets" />
-  <Import Project="SharedFxInstaller.targets" />
   <Import Project="CodeSign.targets" />
   <Import Project="Publish.targets" />
   <Import Project="buildorder.props" />
